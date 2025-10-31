@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, TrendingUp, BookOpen, BarChart3 } from "lucide-react";
+import { CheckCircle2, TrendingUp, BookOpen, BarChart3, Lightbulb, BookText } from "lucide-react";
 import { AnalysisResult, AnalysisMode } from "@/lib/textAnalyzer";
 
 interface AnalysisResultsProps {
@@ -28,7 +28,7 @@ const levelTextColors: { [key: string]: string } = {
 };
 
 const AnalysisResults = ({ results, mode }: AnalysisResultsProps) => {
-  const { detectedLevel, confidence, levelScores, vocabularyDistribution, grammarMetrics, generalStats, explanation } = results;
+  const { detectedLevel, confidence, levelScores, vocabularyDistribution, grammarMetrics, generalStats, explanation, wordExamples, teachingSuggestions } = results;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -200,6 +200,58 @@ const AnalysisResults = ({ results, mode }: AnalysisResultsProps) => {
             value={generalStats.avgWordLength} 
             suffix=" letras"
           />
+        </div>
+      </Card>
+
+      {/* Word Examples */}
+      <Card className="p-6 shadow-lg border-2 animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: "0.5s" }}>
+        <div className="flex items-center gap-3 mb-6">
+          <BookText className="h-6 w-6 text-primary" />
+          <h3 className="text-2xl font-bold">Ejemplos de Palabras por Nivel</h3>
+        </div>
+        
+        <div className="space-y-4">
+          {Object.entries(wordExamples).map(([level, words]) => (
+            words.length > 0 && (
+              <div key={level} className="border-l-4 pl-4" style={{ borderColor: `hsl(var(--level-${level.toLowerCase()}))` }}>
+                <Badge className={`${levelColors[level]} mb-2`}>
+                  {level}
+                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  {words.map((word, idx) => (
+                    <span 
+                      key={idx}
+                      className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm"
+                    >
+                      {word}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          ))}
+        </div>
+      </Card>
+
+      {/* Teaching Suggestions */}
+      <Card className="p-6 shadow-lg border-2 animate-fade-in hover-scale transition-all duration-300" style={{ animationDelay: "0.6s" }}>
+        <div className="flex items-center gap-3 mb-6">
+          <Lightbulb className="h-6 w-6 text-primary" />
+          <h3 className="text-2xl font-bold">Sugerencias para Enseñanza</h3>
+        </div>
+        
+        <div className="space-y-3">
+          {teachingSuggestions.map((suggestion, idx) => (
+            <div 
+              key={idx}
+              className="flex gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                {idx + 1}
+              </div>
+              <p className="text-sm text-foreground">{suggestion}</p>
+            </div>
+          ))}
         </div>
       </Card>
     </div>

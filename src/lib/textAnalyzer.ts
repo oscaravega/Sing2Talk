@@ -28,6 +28,10 @@ export interface LevelScore {
   percentage: number;
 }
 
+export interface WordExamples {
+  [level: string]: string[];
+}
+
 export interface AnalysisResult {
   detectedLevel: CEFRLevel;
   confidence: ConfidenceLevel;
@@ -41,6 +45,8 @@ export interface AnalysisResult {
     avgWordLength: number;
   };
   explanation: string;
+  wordExamples: WordExamples;
+  teachingSuggestions: string[];
 }
 
 // Palabras funcionales comunes en todos los niveles (no se cuentan para ningún nivel específico)
@@ -439,6 +445,93 @@ function getExplanation(level: CEFRLevel, mode: AnalysisMode): string {
   return explanations[level];
 }
 
+function extractWordExamples(words: string[], mode: AnalysisMode): WordExamples {
+  const normalized = words.map(normalizeText);
+  const examples: WordExamples = {};
+  const normalizedFunctional = functionalWords.map(normalizeText);
+  
+  const vocabularyLevels = {
+    A1: vocabularyA1.map(normalizeText),
+    A2: vocabularyA2.map(normalizeText),
+    ...(mode === "complete" && {
+      B1: vocabularyB1.map(normalizeText),
+      B2: vocabularyB2.map(normalizeText),
+      C1: vocabularyC1.map(normalizeText),
+      C2: vocabularyC2.map(normalizeText),
+    }),
+  };
+
+  Object.entries(vocabularyLevels).forEach(([level, vocab]) => {
+    const found = words.filter(w => {
+      const norm = normalizeText(w);
+      return vocab.includes(norm) && !normalizedFunctional.includes(norm) && norm.length > 2;
+    });
+    
+    // Get unique words and limit to 10 examples
+    const unique = Array.from(new Set(found.map(w => w.toLowerCase())));
+    examples[level] = unique.slice(0, 10);
+  });
+
+  return examples;
+}
+
+function generateTeachingSuggestions(result: Omit<AnalysisResult, 'teachingSuggestions' | 'wordExamples'>): string[] {
+  const suggestions: string[] = [];
+  const { detectedLevel, grammarMetrics, vocabularyDistribution } = result;
+
+  // Sugerencias basadas en el nivel detectado
+  if (detectedLevel === "A1") {
+    suggestions.push("Enfócate en vocabulario cotidiano: familia, comida, números, colores.");
+    suggestions.push("Usa oraciones cortas y estructura SVO (Sujeto-Verbo-Objeto).");
+    suggestions.push("Practica el presente de indicativo con verbos regulares.");
+    suggestions.push("Introduce vocabulario con apoyo visual (señas, imágenes, LSM).");
+  } else if (detectedLevel === "A2") {
+    suggestions.push("Introduce tiempos pasados simples (pretérito) con ejemplos claros.");
+    suggestions.push("Amplía vocabulario a actividades, lugares y experiencias personales.");
+    suggestions.push("Practica conectores básicos: y, pero, porque, cuando.");
+    suggestions.push("Combina texto con lenguaje de señas para reforzar comprensión.");
+  } else if (detectedLevel === "B1") {
+    suggestions.push("Introduce el subjuntivo con expresiones de deseo y duda.");
+    suggestions.push("Practica conectores de causa-efecto: por lo tanto, sin embargo, además.");
+    suggestions.push("Desarrolla vocabulario temático: trabajo, salud, educación.");
+    suggestions.push("Trabaja con textos narrativos y descriptivos más largos.");
+  } else if (detectedLevel === "B2") {
+    suggestions.push("Profundiza en usos del subjuntivo en cláusulas subordinadas.");
+    suggestions.push("Introduce vocabulario académico y técnico según intereses.");
+    suggestions.push("Practica la argumentación y expresión de opiniones complejas.");
+    suggestions.push("Analiza estructuras gramaticales avanzadas con ejemplos del texto.");
+  } else if (detectedLevel === "C1") {
+    suggestions.push("Trabaja con textos especializados y registros formales.");
+    suggestions.push("Practica la escritura académica y profesional.");
+    suggestions.push("Analiza matices y expresiones idiomáticas.");
+    suggestions.push("Desarrolla vocabulario culto y técnico específico de áreas de interés.");
+  } else if (detectedLevel === "C2") {
+    suggestions.push("Enfócate en estilo, registro y matices sutiles del lenguaje.");
+    suggestions.push("Trabaja con literatura, textos filosóficos o científicos complejos.");
+    suggestions.push("Practica la escritura creativa y argumentación sofisticada.");
+    suggestions.push("Desarrolla dominio de expresiones idiomáticas y culturales.");
+  }
+
+  // Sugerencias basadas en métricas
+  if (grammarMetrics.subjunctiveCount === 0 && detectedLevel !== "A1") {
+    suggestions.push("Considera introducir o practicar más el modo subjuntivo.");
+  }
+
+  if (grammarMetrics.lexicalDiversity < 50) {
+    suggestions.push("Trabaja en ampliar el vocabulario activo del estudiante.");
+  }
+
+  if (grammarMetrics.avgWordsPerSentence < 8) {
+    suggestions.push("Practica la construcción de oraciones más elaboradas.");
+  }
+
+  // Sugerencias específicas para personas con dificultades auditivas
+  suggestions.push("Refuerza conceptos con material visual y lenguaje de señas (LSM).");
+  suggestions.push("Usa contextos visuales y situaciones prácticas para enseñar vocabulario nuevo.");
+
+  return suggestions;
+}
+
 export function analyzeText(text: string, mode: AnalysisMode): AnalysisResult {
   const sentences = getSentences(text);
   const words = getWords(text);
@@ -473,8 +566,10 @@ export function analyzeText(text: string, mode: AnalysisMode): AnalysisResult {
   const detectedLevel = levelScores[0].level;
   const confidence = determineConfidence(levelScores[0].score, levelScores[1].score);
   const explanation = getExplanation(detectedLevel, mode);
+  
+  const wordExamples = extractWordExamples(words, mode);
 
-  return {
+  const partialResult = {
     detectedLevel,
     confidence,
     levelScores,
@@ -487,5 +582,13 @@ export function analyzeText(text: string, mode: AnalysisMode): AnalysisResult {
       avgWordLength,
     },
     explanation,
+  };
+
+  const teachingSuggestions = generateTeachingSuggestions(partialResult);
+
+  return {
+    ...partialResult,
+    wordExamples,
+    teachingSuggestions,
   };
 }
