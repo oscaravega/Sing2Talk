@@ -11,7 +11,9 @@ import TipsSection from "@/components/TipsSection";
 import ExportResults from "@/components/ExportResults";
 import AnalysisHistory, { HistoryEntry } from "@/components/AnalysisHistory";
 import CompareTexts from "@/components/CompareTexts";
+import EvaluacionPorNiveles from "@/components/EvaluacionPorNiveles";
 import { analyzeText, AnalysisMode, AnalysisResult } from "@/lib/textAnalyzer";
+import { evaluarTextoPorNiveles, ResultadoEvaluacion } from "@/lib/vocabularyEvaluator";
 import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -19,6 +21,7 @@ const Index = () => {
   const [text, setText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<AnalysisResult | null>(null);
+  const [evaluacionResultados, setEvaluacionResultados] = useState<ResultadoEvaluacion | null>(null);
   const [showTips, setShowTips] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -37,7 +40,7 @@ const Index = () => {
     }
   }, [history]);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!text.trim()) {
       toast({
         title: "Campo vacío",
@@ -49,10 +52,16 @@ const Index = () => {
 
     setIsAnalyzing(true);
     
-    // Simulate analysis delay for better UX
-    setTimeout(() => {
+    try {
+      // Simulate analysis delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const analysisResults = analyzeText(text, mode);
       setResults(analysisResults);
+      
+      // Realizar evaluación por niveles
+      const evaluacion = await evaluarTextoPorNiveles(text);
+      setEvaluacionResultados(evaluacion);
       
       // Guardar en historial
       const newEntry: HistoryEntry = {
@@ -70,7 +79,14 @@ const Index = () => {
         title: "¡Análisis completado!",
         description: `Nivel detectado: ${analysisResults.detectedLevel}`,
       });
-    }, 1500);
+    } catch (error) {
+      setIsAnalyzing(false);
+      toast({
+        title: "Error en el análisis",
+        description: "Ocurrió un error al evaluar el texto. Por favor intenta de nuevo.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLoadHistory = (entry: HistoryEntry) => {
@@ -188,6 +204,13 @@ const Index = () => {
               <ExportResults results={results} mode={mode} originalText={text} />
             </div>
             <AnalysisResults results={results} mode={mode} />
+          </div>
+        )}
+
+        {/* Evaluación por Niveles */}
+        {evaluacionResultados && (
+          <div className="animate-fade-in-up mb-6">
+            <EvaluacionPorNiveles resultado={evaluacionResultados} />
           </div>
         )}
 
