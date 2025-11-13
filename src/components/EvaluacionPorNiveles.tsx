@@ -1,9 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
+import { CheckCircle2, TrendingUp, PieChart as PieChartIcon, List } from "lucide-react";
 import { ResultadoEvaluacion } from "@/lib/vocabularyEvaluator";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 
 interface EvaluacionPorNivelesProps {
   resultado: ResultadoEvaluacion;
@@ -28,7 +30,8 @@ const nivelHexColors: { [key: string]: string } = {
 };
 
 const EvaluacionPorNiveles = ({ resultado }: EvaluacionPorNivelesProps) => {
-  const { resultados, nivelDetectado, porcentajeMayor } = resultado;
+  const { resultados, nivelDetectado, porcentajeMayor, palabrasDetectadas } = resultado;
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
 
   // Preparar datos para el gráfico de pastel
   const pieData = Object.entries(resultados).map(([nivel, datos]) => ({
@@ -204,6 +207,63 @@ const EvaluacionPorNiveles = ({ resultado }: EvaluacionPorNivelesProps) => {
                 className="h-4 transition-all duration-1000 ease-out"
               />
             </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Palabras detectadas por nivel */}
+      <Card className="p-6 shadow-lg border-2 animate-fade-in hover-scale transition-all duration-300">
+        <div className="flex items-center gap-2 mb-6">
+          <List className="h-6 w-6 text-primary" />
+          <h3 className="text-2xl font-bold">Palabras/Frases Detectadas</h3>
+        </div>
+
+        <div className="space-y-4">
+          {Object.entries(palabrasDetectadas).map(([nivel, palabras], index) => (
+            <Collapsible
+              key={nivel}
+              open={openSections[nivel]}
+              onOpenChange={(isOpen) =>
+                setOpenSections((prev) => ({ ...prev, [nivel]: isOpen }))
+              }
+              className="animate-slide-in"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <Badge className={`${nivelColors[nivel]}`}>{nivel}</Badge>
+                    <span className="font-semibold text-foreground">
+                      {palabras.length} {palabras.length === 1 ? "palabra detectada" : "palabras detectadas"}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground">
+                    {openSections[nivel] ? "▼" : "▶"}
+                  </span>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <div className="p-4 bg-background border-2 border-border rounded-lg">
+                  {palabras.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {palabras.map((palabra, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="text-sm py-1 px-3"
+                        >
+                          {palabra}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-2">
+                      No se detectaron palabras de este nivel
+                    </p>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </div>
       </Card>
