@@ -1,8 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, TrendingUp } from "lucide-react";
+import { CheckCircle2, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
 import { ResultadoEvaluacion } from "@/lib/vocabularyEvaluator";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface EvaluacionPorNivelesProps {
   resultado: ResultadoEvaluacion;
@@ -20,8 +21,22 @@ const nivelTextColors: { [key: string]: string } = {
   A2: "text-yellow-500",
 };
 
+const nivelHexColors: { [key: string]: string } = {
+  "Pre-A1": "#4ADE80",
+  A1: "#22C55E",
+  A2: "#EAB308",
+};
+
 const EvaluacionPorNiveles = ({ resultado }: EvaluacionPorNivelesProps) => {
   const { resultados, nivelDetectado, porcentajeMayor } = resultado;
+
+  // Preparar datos para el gráfico de pastel
+  const pieData = Object.entries(resultados).map(([nivel, datos]) => ({
+    name: nivel,
+    value: datos.porcentaje,
+    correctas: datos.correctas,
+    incorrectas: datos.incorrectas,
+  }));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -109,6 +124,62 @@ const EvaluacionPorNiveles = ({ resultado }: EvaluacionPorNivelesProps) => {
             </tbody>
           </table>
         </div>
+      </Card>
+
+      {/* Gráfico de Pastel */}
+      <Card className="p-6 shadow-lg border-2 animate-fade-in hover-scale transition-all duration-300">
+        <div className="flex items-center gap-2 mb-6">
+          <PieChartIcon className="h-6 w-6 text-primary" />
+          <h3 className="text-2xl font-bold">Distribución por Niveles</h3>
+        </div>
+
+        <ResponsiveContainer width="100%" height={400}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, value }) => `${name}: ${value}%`}
+              outerRadius={120}
+              fill="#8884d8"
+              dataKey="value"
+              animationBegin={0}
+              animationDuration={800}
+            >
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={nivelHexColors[entry.name]} />
+              ))}
+            </Pie>
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-background border-2 border-border rounded-lg p-4 shadow-lg">
+                      <p className="font-bold text-lg mb-2">{data.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Correctas: <span className="font-semibold text-emerald-600">{data.correctas}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Incorrectas: <span className="font-semibold text-red-500">{data.incorrectas}</span>
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Porcentaje: <span className="font-bold text-foreground">{data.value}%</span>
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Legend
+              verticalAlign="bottom"
+              height={36}
+              formatter={(value) => <span className="text-foreground font-semibold">{value}</span>}
+            />
+          </PieChart>
+        </ResponsiveContainer>
       </Card>
 
       {/* Gráfica de barras */}
