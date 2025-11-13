@@ -54,42 +54,75 @@ export const evaluarTextoPorNiveles = async (
 ): Promise<ResultadoEvaluacion> => {
   const vocabulario = await cargarVocabulario();
 
-  // Normalizar texto y dividir en palabras/frases
+  // Normalizar texto
   const textoNormalizado = normalizarTexto(texto);
+  const palabrasTexto = textoNormalizado.split(/\s+/);
   
-  // Normalizar vocabulario
-  const vocabNormalizado = {
-    preA1: vocabulario.preA1.map(normalizarTexto),
-    A1: vocabulario.A1.map(normalizarTexto),
-    A2: vocabulario.A2.map(normalizarTexto),
+  // Crear sets de palabras por nivel (dividiendo frases en palabras)
+  const crearSetPalabras = (frases: string[]): Set<string> => {
+    const palabras = new Set<string>();
+    frases.forEach(frase => {
+      const fraseLimpia = normalizarTexto(frase);
+      // Agregar la frase completa
+      palabras.add(fraseLimpia);
+      // Agregar palabras individuales
+      fraseLimpia.split(/\s+/).forEach(palabra => {
+        if (palabra.length > 0) {
+          palabras.add(palabra);
+        }
+      });
+    });
+    return palabras;
   };
 
-  // Contar coincidencias por nivel
-  const contarCoincidencias = (nivel: string[]): number => {
+  const vocabPreA1 = crearSetPalabras(vocabulario.preA1);
+  const vocabA1 = crearSetPalabras(vocabulario.A1);
+  const vocabA2 = crearSetPalabras(vocabulario.A2);
+
+  // Contar coincidencias
+  const contarCoincidencias = (vocabSet: Set<string>): number => {
     let coincidencias = 0;
-    nivel.forEach((palabra) => {
-      if (textoNormalizado.includes(palabra)) {
+    
+    // Verificar palabras individuales
+    palabrasTexto.forEach(palabra => {
+      if (vocabSet.has(palabra)) {
         coincidencias++;
       }
     });
+    
+    // Verificar frases completas en el texto
+    vocabSet.forEach(item => {
+      if (item.includes(' ') && textoNormalizado.includes(item)) {
+        // Dar peso extra a frases completas
+        coincidencias += item.split(/\s+/).length;
+      }
+    });
+    
     return coincidencias;
   };
 
-  const correctasPreA1 = contarCoincidencias(vocabNormalizado.preA1);
-  const correctasA1 = contarCoincidencias(vocabNormalizado.A1);
-  const correctasA2 = contarCoincidencias(vocabNormalizado.A2);
+  const correctasPreA1 = contarCoincidencias(vocabPreA1);
+  const correctasA1 = contarCoincidencias(vocabA1);
+  const correctasA2 = contarCoincidencias(vocabA2);
 
   const totalPreA1 = vocabulario.preA1.length;
   const totalA1 = vocabulario.A1.length;
   const totalA2 = vocabulario.A2.length;
 
-  const incorrectasPreA1 = totalPreA1 - correctasPreA1;
-  const incorrectasA1 = totalA1 - correctasA1;
-  const incorrectasA2 = totalA2 - correctasA2;
+  const incorrectasPreA1 = Math.max(0, totalPreA1 - correctasPreA1);
+  const incorrectasA1 = Math.max(0, totalA1 - correctasA1);
+  const incorrectasA2 = Math.max(0, totalA2 - correctasA2);
 
-  const porcentajePreA1 = Math.round((correctasPreA1 / totalPreA1) * 100);
-  const porcentajeA1 = Math.round((correctasA1 / totalA1) * 100);
-  const porcentajeA2 = Math.round((correctasA2 / totalA2) * 100);
+  // Calcular porcentajes basados en la presencia de vocabulario
+  const porcentajePreA1 = Math.min(100, Math.round((correctasPreA1 / totalPreA1) * 100));
+  const porcentajeA1 = Math.min(100, Math.round((correctasA1 / totalA1) * 100));
+  const porcentajeA2 = Math.min(100, Math.round((correctasA2 / totalA2) * 100));
+
+  // Determinar niveles presentes
+  const nivelesPresentes = [];
+  if (porcentajePreA1 > 0) nivelesPresentes.push("Pre-A1");
+  if (porcentajeA1 > 0) nivelesPresentes.push("A1");
+  if (porcentajeA2 > 0) nivelesPresentes.push("A2");
 
   // Determinar nivel predominante
   const niveles = [
@@ -122,7 +155,7 @@ export const evaluarTextoPorNiveles = async (
         porcentaje: porcentajeA2,
       },
     },
-    nivelDetectado: nivelPredominante.nombre,
+    nivelDetectado: nivelesPresentes.length > 0 ? nivelesPresentes.join(", ") : nivelPredominante.nombre,
     porcentajeMayor: nivelPredominante.porcentaje,
     palabrasTotales,
   };
