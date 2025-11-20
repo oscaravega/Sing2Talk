@@ -126,7 +126,7 @@ const Index = () => {
         {/* Header */}
         <header className="text-center mb-8 animate-fade-in-up">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-complete-tertiary bg-clip-text text-transparent mb-3">
-            Prototipo de Análisis de Niveles MCER
+            Clasificador de Textos de Acuerdo a los Niveles MCER
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
             Clasificación según MCER • Diseñado para personas sordas que usan LSM
